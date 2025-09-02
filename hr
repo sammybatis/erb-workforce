@@ -1,0 +1,38 @@
+import { Router } from "express";
+import { db } from "../drizzle/db";
+import { attendance } from "../drizzle/schema";
+import { and, gte, lte } from "drizzle-orm";
+
+const router = Router();
+
+// GET /api/attendance/all?date=2025-09-02
+router.get("/all", async (req, res) => {
+  const { date } = req.query;
+
+  try {
+    if (!date) {
+      // No filter -> return everything
+      const allRecords = await db.select().from(attendance);
+      return res.json(allRecords);
+    }
+
+    // Build range for the given day
+    const start = new Date(`${date}T00:00:00.000Z`);
+    const end = new Date(`${date}T23:59:59.999Z`);
+
+    const records = await db
+      .select()
+      .from(attendance)
+      .where(and(
+        gte(attendance.created_at, start),
+        lte(attendance.created_at, end)
+      ));
+
+    res.json(records);
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: "Failed to fetch attendance" });
+  }
+});
+
+export default router;
